@@ -1,0 +1,2 @@
+# Build with embedded V8-based WebAssembly runtime.
+build --define wasm=v8

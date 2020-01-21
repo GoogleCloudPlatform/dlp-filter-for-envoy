@@ -1,0 +1,106 @@
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: google-dlp-filter
+  namespace: istio-system # as defined in meshConfig resource.
+spec:
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        # portNumber omitted so that this applies to all ports
+        filterChain:
+          filter:
+            name: "envoy.http_connection_manager"
+            subFilter:
+              name: "envoy.router"
+    patch:
+      operation: INSERT_BEFORE
+      value: # DLP Filter configuration below
+        name: envoy.filters.http.wasm
+        config:
+          config:
+            name: "dlp_plugin"
+            root_id: ""
+            vm_config:
+              vm_id: "dlp_vm_id"
+              runtime: "envoy.wasm.runtime.v8"
+              code:
+                local:
+                  filename: "/etc/istio/extensions/dlp-filter.wasm"
+            configuration: |
+              {
+                "inspect": {
+                  "destination": {
+                    "operation": {
+                      "store_local": {
+                        "project_id": "{project_id}"
+                      }
+                    }
+                  },
+                  "sampling": {
+                    "probability": {
+                      "numerator": 100,
+                      "denominator": "HUNDRED"
+                    }
+                  },
+                  "max_request_size_bytes": 500000
+                }
+              }
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_OUTBOUND
+      listener:
+        # portNumber omitted so that this applies to all ports
+        filterChain:
+          filter:
+            name: "envoy.http_connection_manager"
+            subFilter:
+              name: "envoy.router"
+    patch:
+      operation: INSERT_BEFORE
+      value: # DLP Filter configuration below
+        name: envoy.filters.http.wasm
+        config:
+          config:
+            name: "dlp_plugin"
+            root_id: ""
+            vm_config:
+              vm_id: "dlp_vm_id"
+              runtime: "envoy.wasm.runtime.v8"
+              code:
+                local:
+                  filename: "/etc/istio/extensions/dlp-filter.wasm"
+            configuration: |
+              {
+                "inspect": {
+                  "destination": {
+                    "operation": {
+                      "store_local": {
+                        "project_id": "{project_id}"
+                      }
+                    }
+                  },
+                  "sampling": {
+                    "probability": {
+                      "numerator": 100,
+                      "denominator": "HUNDRED"
+                    }
+                  },
+                  "max_request_size_bytes": 500000
+                }
+              }

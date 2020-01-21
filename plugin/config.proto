@@ -1,0 +1,128 @@
+// Copyright 2020 Google LLC.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+syntax = "proto3";
+
+package dlp;
+
+import "proxy_wasm_intrinsics.proto";
+
+message PluginConfig {
+  TrafficInspectConfig inspect = 1;
+}
+
+// This filter captures data plane traffic and sends it to Google Cloud DLP
+// for scanning in search for sensitive data (a.k.a. inspection;
+// see cloud.google.com/dlp/docs for details).
+// This configuration specifies how much traffic should be captured and
+// what parameters to use when calling Google Cloud DLP.
+message TrafficInspectConfig {
+  // Parameters used to call Cloud DLP.
+  Destination destination = 1;
+  // Traffic sampling method and its configuration
+  SamplingConfig sampling = 2;
+  // Maximum size of the request that can be sent to Cloud DLP.
+  // If request size exceeds this value, a warning will be logged into Envoy
+  // logs and a `request_too_large` stat will be reported.
+  uint64 max_request_size_bytes = 3;
+}
+
+// Defines which messages from the captured traffic will be selected for inspection.
+message SamplingConfig {
+  oneof sampling_config {
+    // Probability-based sampling.
+    // Percentage of traffic to be randomly selected for inspection.
+    FractionalPercent probability = 1;
+  }
+}
+
+// Traffic captured by the filter is sent to Google Cloud DLP
+// where submitted content is inspected and findings
+// are returned to the proxy and logged.
+// This configuration specifies parameters used to call Cloud DLP
+// (see https://cloud.google.com/dlp/docs/reference/rpc).
+message Destination {
+  // Optional target endpoint configuration. By default Cloud DLP endpoint
+  // "dlp.googleapis.com" with Google Application Default Credentials is used.
+  // This can be customized:
+  //
+  // 1. Point the filter to a custom endpoint via `target_uri` property.
+  // 2. Use different authentication mechanism, e.g. using STS service
+  // (https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/core/grpc_service.proto#envoy-api-msg-core-grpcservice-googlegrpc-callcredentials-stsservice)
+  GrpcService.GoogleGrpc grpc_config = 1;
+  // Operation this filter should invoke on the Cloud DLP endpoint:
+  //
+  // - Store findings locally - call Cloud DLP to inspect the traffic and
+  // report findings back to the proxy and into the proxy logs
+  DestinationOperation operation = 2;
+}
+
+// Configuration of the operations to be invoked on Cloud DLP.
+// At least one operation has to be specified.
+message DestinationOperation {
+  // Optional configuration of the content inspection call to Cloud DLP.
+  // When present, findings returned from Cloud DLP are written into the proxy
+  // logs.
+  StoreFindingsLocally store_local = 1;
+}
+
+message StoreFindingsLocally {
+  // Id of the GCP project to be used for inspection
+  string project_id = 1;
+  // Optional location where inspection should be performed (see
+  // https://cloud.google.com/dlp/docs/locations), by default "global".
+  // Sample multi-regions: "us", "europe".
+  // Sample regions: "us-central1", "asia-east1".
+  string location_id = 2;
+  // Optional name of the inspection template that should be used for
+  // traffic scanning (see
+  // https://cloud.google.com/dlp/docs/concepts-templates). By default, no
+  // template is used.
+  string inspect_template_name = 3;
+}
+
+// TODO - This is a copy from envoy's envoy.type.FractionalPercent, use that instead
+// A fractional percentage is used in cases in which for performance reasons performing floating
+// point to integer conversions during randomness calculations is undesirable. The message includes
+// both a numerator and denominator that together determine the final fractional value.
+//
+// * **Example**: 1/100 = 1%.
+// * **Example**: 3/10000 = 0.03%.
+message FractionalPercent {
+  // Fraction percentages support several fixed denominator values.
+  enum DenominatorType {
+    // 100.
+    //
+    // **Example**: 1/100 = 1%.
+    HUNDRED = 0;
+
+    // 10,000.
+    //
+    // **Example**: 1/10000 = 0.01%.
+    TEN_THOUSAND = 1;
+
+    // 1,000,000.
+    //
+    // **Example**: 1/1000000 = 0.0001%.
+    MILLION = 2;
+  }
+
+  // Specifies the numerator. Defaults to 0.
+  uint32 numerator = 1;
+
+  // Specifies the denominator. If the denominator specified is less than the numerator, the final
+  // fractional percentage is capped at 1 (100%).
+  DenominatorType denominator = 2;
+}
