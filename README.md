@@ -14,6 +14,11 @@ break between Istio minor version updates.
 > **Note:** DLP Filter for Envoy uses the Cloud DLP service for scanning traffic, and is subject to 
   [Cloud DLP pricing](https://cloud.google.com/dlp/pricing).
 
+For a quick overview of how to use Cloud DLP in a service mesh using the DLP Filter for Envoy,
+watch the following video:
+
+[![Using Cloud DLP in a service mesh](https://img.youtube.com/vi/Vh_KufKwpMA/mqdefault.jpg)](https://www.youtube.com/watch?v=Vh_KufKwpMA)
+
 ## Before you begin
 
 Before building the DLP Filter for Envoy, ensure the following components are installed:
