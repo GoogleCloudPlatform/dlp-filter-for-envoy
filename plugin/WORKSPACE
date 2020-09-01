@@ -58,17 +58,12 @@ git_repository(
     remote = "https://github.com/protocolbuffers/protobuf",
 )
 
-# we don't need all the envoy buildry,
-# and so i go in straight to the api/wasm/cpp so that i can create a new workspace with
-# just the things needed.
 new_git_repository(
     name = "envoy_wasm_api",
     build_file = "//third_party/soloio/bazel/external:envoy-wasm-api.BUILD",
-    commit = "79fc5875a60ff73ef14d8f7dc480487317921517",  # 1.6.7
+    commit = "558d45a2f496e3039e50584cf8304ae535ca73de",  # 1.7.0
     patch_cmds = ["rm BUILD"],
-    remote = "https://github.com/istio/envoy",
-    strip_prefix = "api/wasm/cpp",
-    workspace_file_content = 'workspace(name = "envoy_wasm_api")',
+    remote = "https://github.com/proxy-wasm/proxy-wasm-cpp-sdk",
 )
 
 http_archive(

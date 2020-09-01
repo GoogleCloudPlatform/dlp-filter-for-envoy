@@ -36,20 +36,9 @@ envoy_extension_cc_test(
     repository = "@envoy",
     deps = [
         "@dlp_plugin//:dlp_cc_proto",
-        "@envoy//source/common/stream_info:stream_info_lib",
-        "@envoy//source/extensions/common/wasm:wasm_interoperation_lib",
-        "@envoy//source/extensions/common/wasm/null/sample_plugin:plugin",
+        "@envoy//source/common/http:message_lib",
         "@envoy//source/extensions/filters/http/wasm:wasm_filter_lib",
-        "@envoy//test/mocks/grpc:grpc_mocks",
-        "@envoy//test/mocks/http:http_mocks",
-        "@envoy//test/mocks/network:network_mocks",
-        "@envoy//test/mocks/server:server_mocks",
-        "@envoy//test/mocks/ssl:ssl_mocks",
-        "@envoy//test/mocks/stream_info:stream_info_mocks",
-        "@envoy//test/mocks/thread_local:thread_local_mocks",
-        "@envoy//test/mocks/upstream:upstream_mocks",
-        "@envoy//test/test_common:environment_lib",
-        "@envoy//test/test_common:utility_lib",
+        "@envoy//test/test_common:wasm_lib",
     ],
 )
 

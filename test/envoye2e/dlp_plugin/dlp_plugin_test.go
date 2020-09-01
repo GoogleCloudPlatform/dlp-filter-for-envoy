@@ -37,35 +37,39 @@ const outboundFilterConfig = `- name: envoy.filters.http.wasm
         code:
           local:
             inline_string: "envoy.wasm.metadata_exchange"
-      configuration: "test"
 - name: envoy.filters.http.wasm
-  config:
-    config:
-      name: "dlp_plugin"
-      root_id: ""
-      vm_config:
-        vm_id: "dlp_vm_id"
-        runtime: "envoy.wasm.runtime.v8"
-        code:
-          local:
-            filename: "%s"
-      configuration: |
-        {
-          "inspect": {
-            "destination": {
-              "operation": {
-                "store_local": {
-                  "project_id": "test-project",
-                  "location_id": "test-location",
-                  "inspect_template_name": "test-template"
+  typed_config:
+    "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+    type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+    value:
+      config:
+        name: "dlp_plugin"
+        root_id: ""
+        vm_config:
+          vm_id: "dlp_vm_id"
+          runtime: "envoy.wasm.runtime.v8"
+          code:
+            local:
+              filename: "%s"
+        configuration:
+          "@type": "type.googleapis.com/google.protobuf.StringValue"
+          value: |
+            {
+              "inspect": {
+                "destination": {
+                  "operation": {
+                    "store_local": {
+                      "project_id": "test-project",
+                      "location_id": "test-location",
+                      "inspect_template_name": "test-template"
+                    }
+                  },
+                  "grpc_config": {
+                    "target_uri": "localhost:12312"
+                  }
                 }
-              },
-              "grpc_config": {
-                "target_uri": "localhost:12312"
               }
-            }
-          }
-        }`
+            }`
 
 const inboundFilterConfig = `- name: envoy.filters.http.wasm
   config:
@@ -75,35 +79,39 @@ const inboundFilterConfig = `- name: envoy.filters.http.wasm
         code:
           local:
             inline_string: "envoy.wasm.metadata_exchange"
-      configuration: "test"
 - name: envoy.filters.http.wasm
-  config:
-    config:
-      name: "dlp_plugin"
-      root_id: ""
-      vm_config:
-        vm_id: "dlp_vm_id"
-        runtime: "envoy.wasm.runtime.v8"
-        code:
-          local:
-            filename: "%s"
-      configuration: |
-        {
-          "inspect": {
-            "destination": {
-              "operation": {
-                "store_local": {
-                  "project_id": "test-project",
-                  "location_id": "test-location",
-                  "inspect_template_name": "test-template"
+  typed_config:
+    "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+    type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+    value:
+      config:
+        name: "dlp_plugin"
+        root_id: ""
+        vm_config:
+          vm_id: "dlp_vm_id"
+          runtime: "envoy.wasm.runtime.v8"
+          code:
+            local:
+              filename: "%s"
+        configuration:
+          "@type": "type.googleapis.com/google.protobuf.StringValue"
+          value: |
+            {
+              "inspect": {
+                "destination": {
+                  "operation": {
+                    "store_local": {
+                      "project_id": "test-project",
+                      "location_id": "test-location",
+                      "inspect_template_name": "test-template"
+                    }
+                  },
+                  "grpc_config": {
+                    "target_uri": "localhost:12312"
+                  }
                 }
-              },
-              "grpc_config": {
-                "target_uri": "localhost:12312"
               }
-            }
-          }
-        }`
+            }`
 
 const outboundNodeMetadata = `"NAMESPACE": "default",
 "INCLUDE_INBOUND_PORTS": "9080",

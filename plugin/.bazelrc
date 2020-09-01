@@ -1,9 +1,9 @@
 build --cxxopt=-std=c++17
 build --cxxopt=-O3
 build --cxxopt=-no-canonical-prefixes
-# Commented out to use non-lite protobuf version
+# Using non-lite protobuf version
 # This might need to be revisited for performance
-#build --cxxopt=-DEMSCRIPTEN_PROTOBUF_LITE=1
+build --cxxopt=-DPROXY_WASM_PROTOBUF_FULL=1
 
 # try to optimize un-used code
 build --cxxopt=-fdata-sections

@@ -133,7 +133,7 @@ class InspectContentCallHandler : public GrpcCallHandler<google::protobuf::Empty
 
   void onSuccess(size_t body_size) override {
     grpc_status_->record(1, static_cast<int>(GrpcStatus::Ok));
-    WasmDataPtr response_data = getBufferBytes(BufferType::GrpcReceiveBuffer, 0, body_size);
+    WasmDataPtr response_data = getBufferBytes(WasmBufferType::GrpcReceiveBuffer, 0, body_size);
     inspected_->record(1);
     total_bytes_inspected_->record(inspected_body_size_);
     const InspectContentResponse& response = response_data->proto<InspectContentResponse>();
@@ -160,7 +160,7 @@ class InspectContentCallHandler : public GrpcCallHandler<google::protobuf::Empty
     std::function<void(GrpcStatus status, size_t body_size)> callback =
         [&](GrpcStatus status, size_t body_size) {
       grpc_status_->record(1, static_cast<int>(status));
-      WasmDataPtr response_data = getBufferBytes(BufferType::GrpcReceiveBuffer, 0, body_size);
+      WasmDataPtr response_data = getBufferBytes(WasmBufferType::GrpcReceiveBuffer, 0, body_size);
       not_inspected_->record(1);
       total_bytes_not_inspected_->record(inspected_body_size_);
       grpc_error_->record(1);
@@ -182,7 +182,8 @@ public:
   // Loads WASM configuration
   bool onConfigure(size_t config_size) override {
     // Load filter config
-    const WasmDataPtr configuration = getConfiguration();
+    logInfo("Starting onConfigure");
+    const WasmDataPtr configuration = getBufferBytes(WasmBufferType::PluginConfiguration, 0, config_size);
     JsonParseOptions json_options;
     const Status options_status = JsonStringToMessage(
         configuration->toString(),
@@ -410,7 +411,7 @@ public:
 
   // Captures request body and passes it for inspection at DlpRootContext level
   FilterDataStatus onRequestBody(size_t body_buffer_length, bool end_of_stream) override {
-    WasmDataPtr buffer = getBufferBytes(BufferType::HttpRequestBody, 0, body_buffer_length);
+    WasmDataPtr buffer = getBufferBytes(WasmBufferType::HttpRequestBody, 0, body_buffer_length);
     request_buffer_->append(buffer->data(), buffer->size());
     maybeInspect(request_buffer_.get(), end_of_stream);
     return FilterDataStatus::Continue;
@@ -418,7 +419,7 @@ public:
 
   // Captures response body and passes it for inspection at DlpRootContext level
   FilterDataStatus onResponseBody(size_t body_buffer_length, bool end_of_stream) override {
-    WasmDataPtr buffer = getBufferBytes(BufferType::HttpResponseBody, 0, body_buffer_length);
+    WasmDataPtr buffer = getBufferBytes(WasmBufferType::HttpResponseBody, 0, body_buffer_length);
     response_buffer_->append(buffer->data(), buffer->size());
     maybeInspect(response_buffer_.get(), end_of_stream);
     return FilterDataStatus::Continue;

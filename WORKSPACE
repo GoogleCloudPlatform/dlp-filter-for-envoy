@@ -21,7 +21,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "envoy",
-    commit = "79fc5875a60ff73ef14d8f7dc480487317921517",  # 1.6.7
+    commit = "a5508631f6580b143828712ebcad2180944f215a",  # 1.7.0
     remote = "https://github.com/istio/envoy",
 )
 
@@ -38,13 +38,13 @@ load("@envoy//bazel:repositories.bzl", "envoy_dependencies")
 
 envoy_dependencies()
 
+load("@envoy//bazel:repositories_extra.bzl", "envoy_dependencies_extra")
+
+envoy_dependencies_extra()
+
 load("@envoy//bazel:dependency_imports.bzl", "envoy_dependency_imports")
 
 envoy_dependency_imports()
-
-load("@rules_antlr//antlr:deps.bzl", "antlr_dependencies")
-
-antlr_dependencies(471)
 
 # Nested workspace
 local_repository(
@@ -86,7 +86,7 @@ container_pull(
     name = "istio_proxy",
     registry = "index.docker.io",
     repository = "istio/proxyv2",
-    tag = "1.6.7",
+    tag = "1.7.0",
 )
 
 git_repository(
