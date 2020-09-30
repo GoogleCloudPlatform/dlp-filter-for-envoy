@@ -21,7 +21,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "envoy",
-    commit = "a5508631f6580b143828712ebcad2180944f215a",  # 1.7.0
+    commit = "13c0682af1efb956ac64661960f53f6d45108d76",  # 1.7.3
     remote = "https://github.com/istio/envoy",
 )
 

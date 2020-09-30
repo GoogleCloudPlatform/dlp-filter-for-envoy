@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-wget https://storage.googleapis.com/istio-build/proxy/envoy-alpha-f642a7fd07d0a99944a6e3529566e7985829839c.tar.gz -O bazel-bin/envoy.tar.gz && \
+wget https://storage.googleapis.com/istio-build/proxy/envoy-alpha-dc78069b10cc94fa07bb974b7101dd1b42e2e7bf.tar.gz -O bazel-bin/envoy.tar.gz && \
 tar xzf bazel-bin/envoy.tar.gz --directory bazel-bin && \
 mkdir -p bazel-bin/src/envoy && \
 mv bazel-bin/usr/local/bin/envoy bazel-bin/src/envoy/envoy && \
