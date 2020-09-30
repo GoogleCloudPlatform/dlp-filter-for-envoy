@@ -21,7 +21,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "envoy",
-    commit = "79fc5875a60ff73ef14d8f7dc480487317921517",  # 1.6.7
+    commit = "79fc5875a60ff73ef14d8f7dc480487317921517",  # 1.6.10
     remote = "https://github.com/istio/envoy",
 )
 
@@ -86,7 +86,7 @@ container_pull(
     name = "istio_proxy",
     registry = "index.docker.io",
     repository = "istio/proxyv2",
-    tag = "1.6.7",
+    tag = "1.6.10",
 )
 
 git_repository(

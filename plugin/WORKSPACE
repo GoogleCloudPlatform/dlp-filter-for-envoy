@@ -64,7 +64,7 @@ git_repository(
 new_git_repository(
     name = "envoy_wasm_api",
     build_file = "//third_party/soloio/bazel/external:envoy-wasm-api.BUILD",
-    commit = "79fc5875a60ff73ef14d8f7dc480487317921517",  # 1.6.7
+    commit = "79fc5875a60ff73ef14d8f7dc480487317921517",  # 1.6.10
     patch_cmds = ["rm BUILD"],
     remote = "https://github.com/istio/envoy",
     strip_prefix = "api/wasm/cpp",
