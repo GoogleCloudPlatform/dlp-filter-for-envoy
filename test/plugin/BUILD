@@ -1,5 +1,4 @@
-# Copyright 2016-2019 Envoy Project Authors
-# Copyright 2020 Google LLC
+# Copyright 2020-2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,44 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load(
-    "@envoy//bazel:envoy_build_system.bzl",
-    "envoy_package",
-)
-load(
-    "@envoy//test/extensions:extensions_build_system.bzl",
-    "envoy_extension_cc_test",
-)
-
-envoy_package()
-
-envoy_extension_cc_test(
-    name = "filter_test",
-    size = "large",
-    srcs = ["filter_test.cc"],
-    data = [
-        ":testdata",
-        "@dlp_plugin//:module",
-    ],
-    extension_name = "envoy.filters.http.wasm",
-    repository = "@envoy",
-    deps = [
-        "@dlp_plugin//:dlp_cc_proto",
-        "@envoy//source/common/http:message_lib",
-        "@envoy//source/extensions/filters/http/wasm:wasm_filter_lib",
-        "@envoy//test/test_common:wasm_lib",
-    ],
-)
-
 cc_test(
     name = "buffer_test",
     srcs = [
         "buffer_test.cc",
     ],
     deps = [
-        "@dlp_plugin//buffer",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "//plugin/buffer",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -60,16 +30,25 @@ cc_test(
         "sampling_test.cc",
     ],
     deps = [
-        "@dlp_plugin//sampling",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "//plugin/sampling",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
-filegroup(
-    name = "testdata",
-    srcs = glob([
-        "testdata/*",
-    ]),
-    visibility = ["//visibility:public"],
+cc_test(
+    name = "filter_test",
+    srcs = [
+        "filter_test.cc",
+    ],
+    copts = [
+        "-DPROXY_WASM_PROTOBUF",
+        "-DNULL_PLUGIN",
+    ],
+    deps = [
+        "//plugin:filter",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+        "@proxy_wasm_cpp_host//:lib",
+    ],
 )

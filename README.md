@@ -38,13 +38,13 @@ To build the proxy container with DLP Filter for Envoy, do the following:
 First, compile the DLP Filter for Envoy in the plugin/ folder:
 
 ```
-( cd plugin/ && bazel build :filter.wasm )
+bazel build //plugin:filter.wasm
 ```
 
 The built DLP Filter will be here:
 
 ```
-plugin/bazel-bin/filter.wasm
+bazel-bin/plugin/filter.wasm
 ```
 
 Run tests on the filter you just built:

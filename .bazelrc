@@ -1,2 +1,3 @@
+build --cxxopt=-std=c++17
 # Build with embedded V8-based WebAssembly runtime.
 build --define wasm=v8

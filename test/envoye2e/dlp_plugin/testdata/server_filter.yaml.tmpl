@@ -1,0 +1,32 @@
+- name: envoy.filters.http.wasm
+  typed_config:
+    "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+    type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+    value:
+      config:
+        name: "dlp_plugin"
+        root_id: ""
+        vm_config:
+          vm_id: "dlp_vm_id"
+          runtime: "envoy.wasm.runtime.v8"
+          code:
+            local: { filename: "{{ .Vars.DlpWasmFile }}" }
+        configuration:
+          "@type": "type.googleapis.com/google.protobuf.StringValue"
+          value: |
+            {
+              "inspect": {
+                "destination": {
+                  "operation": {
+                    "store_local": {
+                      "project_id": "{{ .Vars.Project }}",
+                      "location_id": "{{ .Vars.Location }}",
+                      "inspect_template_name": "{{ .Vars.TemplateName }}"
+                    }
+                  },
+                  "grpc_config": {
+                    "target_uri": "{{ .Vars.DlpGrpcUrl }}"
+                  }
+                }
+              }
+            }

@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2020-2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 #include <memory>
 #include "gtest/gtest.h"
-#include "sampling/sampling.h"
+#include "plugin/sampling/sampling.h"
 
 using google::dlp_filter::PassthroughSampler;
 using google::dlp_filter::ProbabilisticSampler;

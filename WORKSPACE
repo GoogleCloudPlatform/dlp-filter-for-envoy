@@ -1,5 +1,5 @@
-# Copyright 2016-2019 Envoy Project Authors
-# Copyright 2020 Google LLC
+# Copyright 2020-2021 Istio Authors
+# Copyright 2020-2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,41 +15,74 @@
 
 workspace(name = "dlp")
 
-# Include Envoy proxy repo
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-git_repository(
-    name = "envoy",
-    commit = "13c0682af1efb956ac64661960f53f6d45108d76",  # 1.7.3
-    remote = "https://github.com/istio/envoy",
+# This file is based on https://github.com/istio-ecosystem/wasm-extensions/blob/master/WORKSPACE
+
+PROXY_WASM_CPP_SDK_SHA = "956f0d500c380cc1656a2d861b7ee12c2515a664"
+
+PROXY_WASM_CPP_SDK_SHA256 = "b97e3e716b1f38dc601487aa0bde72490bbc82b8f3ad73f1f3e69733984955df"
+
+http_archive(
+    name = "proxy_wasm_cpp_sdk",
+    sha256 = PROXY_WASM_CPP_SDK_SHA256,
+    strip_prefix = "proxy-wasm-cpp-sdk-" + PROXY_WASM_CPP_SDK_SHA,
+    url = "https://github.com/proxy-wasm/proxy-wasm-cpp-sdk/archive/" + PROXY_WASM_CPP_SDK_SHA + ".tar.gz",
 )
 
-# Envoy workspace
-load("@envoy//bazel:api_binding.bzl", "envoy_api_binding")
+load("@proxy_wasm_cpp_sdk//bazel/dep:deps.bzl", "wasm_dependencies")
 
-envoy_api_binding()
+wasm_dependencies()
 
-load("@envoy//bazel:api_repositories.bzl", "envoy_api_dependencies")
+load("@proxy_wasm_cpp_sdk//bazel/dep:deps_extra.bzl", "wasm_dependencies_extra")
 
-envoy_api_dependencies()
+wasm_dependencies_extra()
 
-load("@envoy//bazel:repositories.bzl", "envoy_dependencies")
+### optional imports ###
+# To import commonly used libraries from istio proxy, such as base64, json, and flatbuffer.
+IO_ISTIO_PROXY_SHA = "b68f58a40c87e4ac8e7c2ff04ec530c725d870c6"
 
-envoy_dependencies()
+IO_ISTIO_PROXY_SHA256 = "3e76e2e3f95ae0a2233ebec2f4f02eb64a534d770850df6c5b0b305f93f68243"
 
-load("@envoy//bazel:repositories_extra.bzl", "envoy_dependencies_extra")
+http_archive(
+    name = "io_istio_proxy",
+    sha256 = IO_ISTIO_PROXY_SHA256,
+    strip_prefix = "proxy-" + IO_ISTIO_PROXY_SHA,
+    url = "https://github.com/istio/proxy/archive/" + IO_ISTIO_PROXY_SHA + ".tar.gz",
+)
 
-envoy_dependencies_extra()
+git_repository(
+    name = "istio_ecosystem_wasm_extensions",
+    commit = "26c492328c558993cf8bbfbbe3a96fab52b69281",  # 1.9
+    remote = "https://github.com/istio-ecosystem/wasm-extensions",
+)
 
-load("@envoy//bazel:dependency_imports.bzl", "envoy_dependency_imports")
+load("@istio_ecosystem_wasm_extensions//bazel:wasm.bzl", "wasm_libraries")
 
-envoy_dependency_imports()
+wasm_libraries()
 
-# Nested workspace
-local_repository(
-    name = "dlp_plugin",
-    path = "plugin",
+# To import proxy wasm cpp host, which will be used in unit testing.
+load("@proxy_wasm_cpp_host//bazel:repositories.bzl", "proxy_wasm_cpp_host_repositories")
+
+proxy_wasm_cpp_host_repositories()
+
+load("@proxy_wasm_cpp_host//bazel:dependencies.bzl", "proxy_wasm_cpp_host_dependencies")
+
+proxy_wasm_cpp_host_dependencies()
+
+# Dependencies for building DLP API classes
+git_repository(
+    name = "com_google_googleapis",
+    commit = "91eee3d039fbdbadee008393504900287bbc6f43",
+    remote = "https://github.com/googleapis/googleapis.git",
+)
+
+load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
+
+switched_rules_by_language(
+    name = "com_google_googleapis_imports",
+    cc = True,
 )
 
 # Docker-specific part
@@ -86,7 +119,7 @@ container_pull(
     name = "istio_proxy",
     registry = "index.docker.io",
     repository = "istio/proxyv2",
-    tag = "1.7.0",
+    tag = "1.9.4",
 )
 
 git_repository(

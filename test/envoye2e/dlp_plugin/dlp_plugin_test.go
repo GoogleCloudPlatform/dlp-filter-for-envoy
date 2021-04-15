@@ -1,5 +1,5 @@
 // Copyright 2019 Istio Authors
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,248 +13,183 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client_test
+package dlp_plugin
 
 import (
-  "fmt"
-  "path/filepath"
-  "testing"
-  "time"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+	"strings"
+	"fmt"
+	"strconv"
 
-  "os/exec"
-  "strings"
+	"istio.io/proxy/test/envoye2e/driver"
+	"istio.io/proxy/test/envoye2e/env"
+	"istio.io/proxy/testdata"
 
-  "istio.io/proxy/test/envoye2e/env"
-  fake_dlp "istio.io/proxy/test/envoye2e/dlp_plugin/fake_dlp"
-  dlppb "google.golang.org/genproto/googleapis/privacy/dlp/v2"
+	dlp_driver "github.com/GoogleCloudPlatform/dlp-filter-for-envoy/third_party/istio_proxy/driver"
+
+  grpc "google.golang.org/grpc"
+	test "github.com/GoogleCloudPlatform/dlp-filter-for-envoy/test/envoye2e"
+  fake_dlp "github.com/GoogleCloudPlatform/dlp-filter-for-envoy/test/envoye2e/dlp_plugin/fake_dlp"
 )
 
-const outboundFilterConfig = `- name: envoy.filters.http.wasm
-  config:
-    config:
-      vm_config:
-        runtime: "envoy.wasm.runtime.null"
-        code:
-          local:
-            inline_string: "envoy.wasm.metadata_exchange"
-- name: envoy.filters.http.wasm
-  typed_config:
-    "@type": type.googleapis.com/udpa.type.v1.TypedStruct
-    type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
-    value:
-      config:
-        name: "dlp_plugin"
-        root_id: ""
-        vm_config:
-          vm_id: "dlp_vm_id"
-          runtime: "envoy.wasm.runtime.v8"
-          code:
-            local:
-              filename: "%s"
-        configuration:
-          "@type": "type.googleapis.com/google.protobuf.StringValue"
-          value: |
-            {
-              "inspect": {
-                "destination": {
-                  "operation": {
-                    "store_local": {
-                      "project_id": "test-project",
-                      "location_id": "test-location",
-                      "inspect_template_name": "test-template"
-                    }
-                  },
-                  "grpc_config": {
-                    "target_uri": "localhost:12312"
-                  }
-                }
-              }
-            }`
+type DlpMock struct {
+  Port       uint16
 
-const inboundFilterConfig = `- name: envoy.filters.http.wasm
-  config:
-    config:
-      vm_config:
-        runtime: "envoy.wasm.runtime.null"
-        code:
-          local:
-            inline_string: "envoy.wasm.metadata_exchange"
-- name: envoy.filters.http.wasm
-  typed_config:
-    "@type": type.googleapis.com/udpa.type.v1.TypedStruct
-    type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
-    value:
-      config:
-        name: "dlp_plugin"
-        root_id: ""
-        vm_config:
-          vm_id: "dlp_vm_id"
-          runtime: "envoy.wasm.runtime.v8"
-          code:
-            local:
-              filename: "%s"
-        configuration:
-          "@type": "type.googleapis.com/google.protobuf.StringValue"
-          value: |
-            {
-              "inspect": {
-                "destination": {
-                  "operation": {
-                    "store_local": {
-                      "project_id": "test-project",
-                      "location_id": "test-location",
-                      "inspect_template_name": "test-template"
-                    }
-                  },
-                  "grpc_config": {
-                    "target_uri": "localhost:12312"
-                  }
-                }
-              }
-            }`
-
-const outboundNodeMetadata = `"NAMESPACE": "default",
-"INCLUDE_INBOUND_PORTS": "9080",
-"app": "productpage",
-"EXCHANGE_KEYS": "NAME,NAMESPACE,INSTANCE_IPS,LABELS,OWNER,PLATFORM_METADATA,WORKLOAD_NAME,CANONICAL_TELEMETRY_SERVICE,MESH_ID,SERVICE_ACCOUNT",
-"INSTANCE_IPS": "10.52.0.34,fe80::a075:11ff:fe5e:f1cd",
-"pod-template-hash": "84975bc778",
-"INTERCEPTION_MODE": "REDIRECT",
-"SERVICE_ACCOUNT": "bookinfo-productpage",
-"CONFIG_NAMESPACE": "default",
-"version": "v1",
-"OWNER": "kubernetes://apis/apps/v1/namespaces/default/deployments/productpage-v1",
-"WORKLOAD_NAME": "productpage-v1",
-"ISTIO_VERSION": "1.3-dev",
-"kubernetes.io/limit-ranger": "LimitRanger plugin set: cpu request for container productpage",
-"POD_NAME": "productpage-v1-84975bc778-pxz2w",
-"istio": "sidecar",
-"PLATFORM_METADATA": {
- "gcp_cluster_name": "test-cluster",
- "gcp_project": "test-project",
- "gcp_cluster_location": "us-east4-b"
-},
-"LABELS": {
- "app": "productpage",
- "version": "v1",
- "pod-template-hash": "84975bc778"
-},
-"ISTIO_PROXY_SHA": "istio-proxy:47e4559b8e4f0d516c0d17b233d127a3deb3d7ce",
-"NAME": "productpage-v1-84975bc778-pxz2w",`
-
-const inboundNodeMetadata = `"NAMESPACE": "default",
-"INCLUDE_INBOUND_PORTS": "9080",
-"app": "ratings",
-"EXCHANGE_KEYS": "NAME,NAMESPACE,INSTANCE_IPS,LABELS,OWNER,PLATFORM_METADATA,WORKLOAD_NAME,CANONICAL_TELEMETRY_SERVICE,MESH_ID,SERVICE_ACCOUNT",
-"INSTANCE_IPS": "10.52.0.34,fe80::a075:11ff:fe5e:f1cd",
-"pod-template-hash": "84975bc778",
-"INTERCEPTION_MODE": "REDIRECT",
-"SERVICE_ACCOUNT": "bookinfo-ratings",
-"CONFIG_NAMESPACE": "default",
-"version": "v1",
-"OWNER": "kubernetes://apis/apps/v1/namespaces/default/deployments/ratings-v1",
-"WORKLOAD_NAME": "ratings-v1",
-"ISTIO_VERSION": "1.3-dev",
-"kubernetes.io/limit-ranger": "LimitRanger plugin set: cpu request for container ratings",
-"POD_NAME": "ratings-v1-84975bc778-pxz2w",
-"istio": "sidecar",
-"PLATFORM_METADATA": {
- "gcp_cluster_name": "test-cluster",
- "gcp_project": "test-project",
- "gcp_cluster_location": "us-east4-b"
-},
-"LABELS": {
- "app": "ratings",
- "version": "v1",
- "pod-template-hash": "84975bc778"
-},
-"ISTIO_PROXY_SHA": "istio-proxy:47e4559b8e4f0d516c0d17b233d127a3deb3d7ce",
-"NAME": "ratings-v1-84975bc778-pxz2w",`
-
-const statsConfig = `stats_config:
-  use_all_default_tags: true`
-
-// Stats in Server Envoy proxy.
-var expectedPrometheusStats = map[string]env.Stat{
-  "envoy_dlp_stat_inspected": {Value: 20},
+  FakeDlp    *fake_dlp.FakeDlpServiceServer
+  GrpcServer *grpc.Server
 }
 
-func verifyInspectContent(got *dlppb.InspectContentRequest) error {
-  exp := strings.Repeat("Hi, this is my SSN: 987-65-4321.", 1000)
-  if string(got.Item.GetByteItem().GetData()) != exp {
-    return fmt.Errorf("Received request data %v should be equal to %v", got.Item, exp)
-  }
-  exp_parent := "projects/test-project/locations/test-location"
-  if got.Parent != exp_parent {
-    return fmt.Errorf("Received request parent %v should be equal to %v", got.Parent, exp_parent)
-  }
-  exp_template_name := "test-template"
-  if got.InspectTemplateName != exp_template_name {
-    return fmt.Errorf("Received request template %v should be equal to %v", got.InspectTemplateName,
-        exp_template_name)
-  }
-  return nil;
+func (d *DlpMock) Run(params *driver.Params) error {
+  // Start a fake DLP server
+  fakeDlp, grpcServer := fake_dlp.NewFakeDlp(d.Port, 0)
+  d.FakeDlp = fakeDlp
+  d.GrpcServer = grpcServer
+  return nil
 }
 
-func GetWorkspace() string {
-  workspace, _ := exec.Command("bazel", "info", "workspace").Output()
-  return strings.TrimSuffix(string(workspace), "\n")
+func (d *DlpMock) Cleanup() {
+  d.GrpcServer.Stop()
 }
 
-func TestDlpPlugin(t *testing.T) {
-  s := env.NewClientServerEnvoyTestSetup(env.BasicFlowTest, t)
-  s.SetFiltersBeforeEnvoyRouterInClientToProxy(fmt.Sprintf(outboundFilterConfig, filepath.Join(GetWorkspace(), "plugin/bazel-bin/filter.wasm")))
-  s.SetFiltersBeforeEnvoyRouterInClientToApp(fmt.Sprintf(inboundFilterConfig, filepath.Join(GetWorkspace(), "plugin/bazel-bin/filter.wasm")))
-  s.SetServerNodeMetadata(inboundNodeMetadata)
-  s.SetClientNodeMetadata(outboundNodeMetadata)
-  s.SetExtraConfig(statsConfig)
-  if err := s.SetUpClientServerEnvoy(); err != nil {
-    t.Fatalf("Failed to setup test: %v", err)
-  }
-  defer s.TearDownClientServerEnvoy()
+var _ driver.Step = &DlpMock{}
 
-  port := uint16(12312)
-  fakeDlp, grpcServer := fake_dlp.NewFakeDlp(port, 0)
-  defer grpcServer.Stop()
+type DlpCheck struct {
+  dlpMock      *DlpMock
+  InspectCount int
+  RequestBody  string
+  FullProject  string
+  TemplateName string
+}
 
-  url := fmt.Sprintf("http://127.0.0.1:%d/echo", s.Ports().AppToClientProxyPort)
-
-  // Enable trace
-  enableGrpcLogsURL := fmt.Sprintf("http://localhost:%d/logging?grpc=trace", s.Ports().ClientAdminPort)
-  env.HTTPPost(enableGrpcLogsURL, "", "")
-  enableWasmLogsURL := fmt.Sprintf("http://localhost:%d/logging?wasm=debug", s.Ports().ClientAdminPort)
-  env.HTTPPost(enableWasmLogsURL, "", "")
-
-  // Issues a GET echo request with SSN in body
-  tag := "OKGet"
-  for i := 0; i < 10; i++ {
-    if _, _, err := env.HTTPPost(url, "text/plain", strings.Repeat("Hi, this is my SSN: 987-65-4321.", 1000)); err != nil {
-      t.Errorf("Failed in request %s: %v", tag, err)
-    }
-  }
-
+func (d *DlpCheck) Run(params *driver.Params) error {
   inspectContentReceived := 0
   to := time.NewTimer(1 * time.Second)
 
   // Collect requests received on mock server side
-  for inspectContentReceived < 10 {
+  for inspectContentReceived < d.InspectCount {
     select {
-    case req := <-fakeDlp.InspectContentReq:
-      if err := verifyInspectContent(req); err != nil {
-        t.Errorf("InspectContentRequest verification failed: %v", err)
+    case req := <-d.dlpMock.FakeDlp.InspectContentReq:
+      exp := d.RequestBody
+      if string(req.Item.GetByteItem().GetData()) != exp {
+        return fmt.Errorf("Received request data %v should be equal to %v", req.Item, exp)
+      }
+      exp_parent := d.FullProject
+      if req.Parent != exp_parent {
+        return fmt.Errorf("Received request parent %v should be equal to %v", req.Parent, exp_parent)
+      }
+      exp_template_name := d.TemplateName
+      if req.InspectTemplateName != exp_template_name {
+        return fmt.Errorf("Received request template %v should be equal to %v", req.InspectTemplateName,
+            exp_template_name)
       }
       inspectContentReceived++;
+      return nil;
     case <-to.C:
       to.Stop()
       rcv := fmt.Sprintf(
         "inspectContentReceived: %d",
         inspectContentReceived,
       )
-      t.Fatal("timeout: DLP did not receive required requests: " + rcv)
+      return fmt.Errorf("timeout: DLP did not receive required requests: " + rcv)
     }
   }
+  return nil
+}
 
-  // Verify that correct stats have been recorded
-  s.VerifyPrometheusStats(expectedPrometheusStats, s.Ports().ServerAdminPort)
+func (d *DlpCheck) Cleanup() {
+}
 
+var _ driver.Step = &DlpCheck{}
+
+var TestCases = []struct {
+	Name               string
+	Method             string
+	RequestBody        string
+	Project            string
+  TemplateName       string
+  Location           string
+  FullProject        string
+	ResponseCode       int
+	RequestCount       int
+	InspectCount int
+}{
+	{
+		Name:               "Success",
+		Method:             "POST",
+		RequestBody:        strings.Repeat("Hi, this is my SSN: 987-65-4321.", 1000),
+		Project:            "test-project",
+    TemplateName:       "test-template",
+    Location:           "test-location",
+    FullProject:        "projects/test-project/locations/test-location",
+		ResponseCode:       200,
+		RequestCount:       10,
+		InspectCount:       20,
+	},
+}
+
+func TestDlpFilter(t *testing.T) {
+	for _, testCase := range TestCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			params := driver.NewTestParams(t, map[string]string{
+				"DlpWasmFile":  filepath.Join(env.GetBazelBinOrDie(), "plugin/filter.wasm"),
+				"Project":      testCase.Project,
+				"TemplateName": testCase.TemplateName,
+				"Location":     testCase.Location,
+			}, test.ExtensionE2ETests)
+			dlpPort := params.Ports.Max + 1
+			params.Vars["DlpGrpcUrl"] = "localhost:" + strconv.Itoa(int(dlpPort))
+			params.Vars["ServerHTTPFilters"] = params.LoadTestData("test/envoye2e/dlp_plugin/testdata/server_filter.yaml.tmpl")
+			params.Vars["InspectCount"] = strconv.Itoa(testCase.InspectCount)
+			dlpMock := &DlpMock{
+			  Port: dlpPort,
+			}
+			dlpCheck := &DlpCheck{
+			  dlpMock: dlpMock,
+        InspectCount: testCase.InspectCount,
+        RequestBody:  testCase.RequestBody,
+        FullProject:  testCase.FullProject,
+        TemplateName: testCase.TemplateName,
+			}
+
+			if err := (&driver.Scenario{
+				Steps: []driver.Step{
+				  // Spin up Envoy and fake DLP
+					&driver.XDS{},
+					&driver.Update{
+						Node: "server", Version: "0", Listeners: []string{string(testdata.MustAsset("listener/server.yaml.tmpl"))},
+					},
+					&driver.Envoy{
+						Bootstrap:       params.FillTestData(string(testdata.MustAsset("bootstrap/server.yaml.tmpl"))),
+						DownloadVersion: os.Getenv("ISTIO_TEST_VERSION"),
+					},
+					dlpMock,
+					&driver.Sleep{Duration: 1 * time.Second},
+					// Run actual test
+					&driver.Repeat{
+						N: testCase.RequestCount,
+						Step: &dlp_driver.HTTPCall{
+              Port:            params.Ports.ServerPort,
+              Method:          testCase.Method,
+              RequestBody:     testCase.RequestBody,
+              ResponseCode:    testCase.ResponseCode,
+						},
+					},
+					// Verify envoy logged the requests and DLP received the body
+					&driver.Stats{
+						AdminPort: params.Ports.ServerAdmin,
+						Matchers: map[string]driver.StatMatcher{
+							"envoy_dlp_stat_inspected": &driver.
+								ExactStat{Metric: "test/envoye2e/dlp_plugin/testdata/stats.yaml.tmpl"},
+						},
+					},
+          dlpCheck,
+				},
+			}).Run(params); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
 }

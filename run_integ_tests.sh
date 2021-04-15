@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-wget https://storage.googleapis.com/istio-build/proxy/envoy-alpha-dc78069b10cc94fa07bb974b7101dd1b42e2e7bf.tar.gz -O bazel-bin/envoy.tar.gz && \
-tar xzf bazel-bin/envoy.tar.gz --directory bazel-bin && \
-mkdir -p bazel-bin/src/envoy && \
-mv bazel-bin/usr/local/bin/envoy bazel-bin/src/envoy/envoy && \
-chmod a+x bazel-bin/src/envoy/envoy && \
-go test test/envoye2e/dlp_plugin/dlp_plugin_test.go
+ISTIO_TEST_VERSION=1.9 go test test/envoye2e/dlp_plugin/dlp_plugin_test.go

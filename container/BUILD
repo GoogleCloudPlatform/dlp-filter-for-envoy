@@ -5,25 +5,25 @@ container_image(
     name = "dlp_proxy",
     # This depends on istio_proxy container_pull in WORKSPACE
     base = "@istio_proxy//image",
-    files = ["@dlp_plugin//:module"],
-    tars = [":licenses_tar"],
+    files = ["//plugin:filter.wasm"],
     symlinks = {
-        "/etc/istio/extensions/dlp-filter.wasm": "/filter.wasm"
+        "/etc/istio/extensions/dlp-filter.wasm": "/filter.wasm",
     },
+    tars = [":licenses_tar"],
 )
 
 pkg_tar(
     name = "licenses_tar",
-    strip_prefix = "/third_party/container",
-    package_dir = "/",
     srcs = ["//third_party/container:licenses"],
     mode = "0755",
+    package_dir = "/",
+    strip_prefix = "/third_party/container",
 )
 
 container_push(
     name = "dlp_proxy_push",
-    image = ":dlp_proxy",
     format = "Docker",
+    image = ":dlp_proxy",
     registry = "$(CONTAINER_REGISTRY)",
     repository = "$(CONTAINER_REPOSITORY)",
     tag = "$(CONTAINER_TAG)",
