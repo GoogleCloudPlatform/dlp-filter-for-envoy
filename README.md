@@ -1,4 +1,6 @@
-# Cloud DLP Filter for Envoy
+# [DEPRECATED] Cloud DLP Filter for Envoy
+
+This project is no longer actively developed or maintained.
 
 ## Overview
 
